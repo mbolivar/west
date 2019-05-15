@@ -27,6 +27,8 @@ from west.util import west_dir, WestNotFound
 # tests).
 config = configparser.ConfigParser(allow_no_value=True)
 
+_SYSTEM = platform.system()
+
 
 class ConfigFile(Enum):
     '''Enum representing the possible types of configuration file.
@@ -37,12 +39,12 @@ class ConfigFile(Enum):
     - ALL: all three of the above, where applicable
     '''
     ALL = 0
-    if platform.system() == 'Linux':
+    if _SYSTEM == 'Linux' or 'bsd' in _SYSTEM.lower():
         SYSTEM = '/etc/westconfig'
-    elif platform.system() == 'Darwin':  # Mac OS
+    elif _SYSTEM == 'Darwin':  # Mac OS
         # This was seen on a local machine ($(prefix) = /usr/local)
         SYSTEM = '/usr/local/etc/westconfig'
-    elif platform.system() == 'Windows':
+    elif _SYSTEM == 'Windows':
         # Seen on a local machine
         SYSTEM = os.path.expandvars('%PROGRAMDATA%\\west\\config')
     GLOBAL = os.path.expanduser('~/.westconfig')
@@ -68,20 +70,19 @@ def read_config(config_file=ConfigFile.ALL, config=config):
 
     System-wide:
 
-    - Linux: ``/etc/westconfig``
+    - Linux, BSDs: ``/etc/westconfig``
     - macOS: ``/usr/local/etc/westconfig``
     - Windows: ``%PROGRAMDATA%\\west\\config``
 
     "Global" or user-wide:
 
     - Linux: ``~/.westconfig`` or ``$XDG_CONFIG_HOME/west/config``
-    - macOS: ``~/.westconfig``
-    - Windows: ``.westconfig`` in the user's home directory, as determined
-      by os.path.expanduser.
+    - macOS, BSDs, Windows: ``~/.westconfig`` (where ~ is determined
+      by os.path.expanduser).
 
-    Local (per-installation)
+    Local (per-installation):
 
-    - Linux, macOS, Windows: ``path/to/installation/.west/config``
+    - all platforms: ``path/to/installation/.west/config``
 
     Configuration values from later configuration files override configuration
     from earlier ones. Local values have highest precedence, and system values
@@ -90,21 +91,20 @@ def read_config(config_file=ConfigFile.ALL, config=config):
     # Gather (potential) configuration file paths
     files = []
 
-    # System-wide and user-specific
+    # System
     if config_file == ConfigFile.ALL or config_file == ConfigFile.SYSTEM:
         files.append(ConfigFile.SYSTEM.value)
 
-    if config_file == ConfigFile.ALL and platform.system() == 'Linux':
+    # Global
+    if config_file == ConfigFile.ALL and _SYSTEM == 'Linux':
         files.append(os.path.join(os.environ.get(
             'XDG_CONFIG_HOME',
             os.path.expanduser('~/.config')),
             'west', 'config'))
-
     if config_file == ConfigFile.ALL or config_file == ConfigFile.GLOBAL:
         files.append(ConfigFile.GLOBAL.value)
 
-    # Repository-specific
-
+    # Local
     if config_file == ConfigFile.ALL or config_file == ConfigFile.LOCAL:
         try:
             files.append(os.path.join(west_dir(), ConfigFile.LOCAL.value))
