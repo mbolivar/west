@@ -66,7 +66,10 @@ class _ProjectCommand(WestCommand):
             return self.manifest.get_projects(ids, only_cloned=only_cloned)
         except ValueError as ve:
             if len(ve.args) != 2:
-                raise          # not directly raised by get_projects()
+                # This "can't happen" -- self.manifest should not be
+                # freestanding, which is the only case this should
+                # fall under.
+                raise
 
             # Die with an error message on unknown or uncloned projects.
             unknown, uncloned = ve.args
@@ -427,6 +430,7 @@ class List(_ProjectCommand):
                     name=project.name,
                     url=project.url or 'N/A',
                     path=project.path,
+                    topdir=project.topdir,
                     abspath=project.abspath,
                     posixpath=project.posixpath,
                     revision=project.revision or 'N/A',
